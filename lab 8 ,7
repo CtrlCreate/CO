@@ -1,0 +1,510 @@
+LAB 8:
+Task 1: Deploy a CloudFormation Stack that creates a VPC and a security group using the task1.yaml template:
+________________________________________
+✅ Step 1: Download and Review the Template
+1.	Right-click the link for task1.yaml and choose Download.
+2.	Open the file in a text editor (e.g., Notepad, VS Code — not Word or WordPad).
+3.	Review the YAML structure:
+o	Parameters: Accepts VPC and subnet CIDR ranges.
+o	Resources: Defines the VPC and a security group.
+o	Outputs: Displays useful information (e.g., Default Security Group ID).
+________________________________________
+✅ Step 2: Create the Stack in AWS CloudFormation
+1.	Go to the AWS Management Console.
+2.	In the Services menu, search and select CloudFormation.
+3.	Click Create stack → With new resources (standard).
+4.	Under Specify template, select:
+o	Template source: Upload a template file
+o	Click Choose file, upload your task1.yaml
+o	Click Next
+________________________________________
+✅ Step 3: Configure Stack Details
+1.	Stack name: Type Lab
+2.	Parameters section: Default CIDR values are filled in; no changes needed.
+3.	Click Next
+________________________________________
+✅ Step 4: Configure Stack Options
+•	Leave everything as default.
+•	Scroll to the bottom, click Next
+________________________________________
+✅ Step 5: Review and Create the Stack
+1.	On the Review page, ensure:
+o	Stack name is Lab
+o	Template looks correct
+2.	Scroll down and click Create stack
+________________________________________
+✅ Step 6: Monitor Stack Creation
+1.	The stack will show CREATE_IN_PROGRESS
+2.	Click the Events tab:
+o	It displays what CloudFormation is currently doing
+o	Click the refresh icon regularly to update
+3.	Click the Resources tab to see what's been created (e.g., VPC, security group)
+________________________________________
+✅ Step 7: Verify Completion
+•	Wait for Status to become CREATE_COMPLETE
+________________________________________
+✅ (Optional) Step 8: View in VPC Console
+1.	Navigate to VPC in the AWS Console
+2.	Check for a VPC with the name/tag from your CloudFormation template
+3.	Confirm the VPC and security group were created
+
+✅ Step-by-Step Instructions for Task 2
+🔧 Step 1: Edit the task1.yaml File
+Open the original task1.yaml in your text editor (like VS Code or Notepad). Scroll to the section that begins with Resources:.
+Under Resources:, add the following two lines (exact spacing is important):
+yaml
+CopyEdit
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+📝 Explanation:
+•	MyS3Bucket is the logical name of the resource.
+•	Type: AWS::S3::Bucket tells CloudFormation to create an S3 bucket.
+•	No properties are needed for this task, and CloudFormation will automatically generate a globally unique name for the bucket.
+Your file should now look something like this:
+yaml
+CopyEdit
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      Tags:
+        - Key: Name
+          Value: LabVPC
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access
+      VpcId: !Ref MyVPC
+
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+✅ Save the file.
+________________________________________
+⬆️ Step 2: Update the Stack in CloudFormation
+1.	Open the AWS Management Console
+2.	Navigate to CloudFormation
+3.	Select the Lab stack
+4.	Click Update
+5.	Choose Replace current template
+6.	Click Upload a template file
+7.	Click Choose file and select your modified task1.yaml
+8.	Click Next
+9.	On the Specify stack details page, click Next
+10.	On the Configure stack options page, click Next
+________________________________________
+👀 Step 3: Preview the Changes
+At the bottom of the page, look for the Preview Changes summary. You should see:
+cpp
+CopyEdit
++ Add AWS::S3::Bucket MyS3Bucket
+This confirms CloudFormation will add the S3 bucket without affecting the existing resources.
+Click Update stack
+________________________________________
+✅ Step 4: Verify the Stack Update
+1.	Wait for the stack status to become UPDATE_COMPLETE
+2.	Click the Resources tab
+3.	Confirm that MyS3Bucket appears and is of type AWS::S3::Bucket
+________________________________________
+🪣 (Optional) Step 5: Check the S3 Console
+1.	Go to the S3 service in the AWS Console
+2.	Find the newly created bucket — it will have a randomly generated name
+3.	Confirm it was created by CloudFormation
+
+
+Task 3, you're adding an Amazon EC2 instance to your existing CloudFormation template.
+This task includes two main steps:
+1.	Add a parameter for the Amazon Machine Image (AMI) ID using SSM Parameter Store.
+2.	Add an EC2 instance resource under Resources: that uses this AMI, along with security group and subnet references.
+________________________________________
+✅ Step-by-Step Guide to Complete Task 3
+________________________________________
+🧾 Step 1: Add the AMI Parameter
+Locate the Parameters: section in your task1.yaml file (or add one at the top if it doesn't exist) and add:
+yaml
+CopyEdit
+Parameters:
+  AmazonLinuxAMIID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+📝 This uses AWS Systems Manager (SSM) to fetch the latest Amazon Linux 2 AMI for your region.
+________________________________________
+💻 Step 2: Add the EC2 Instance to Resources:
+Under the Resources: section, add the following:
+yaml
+CopyEdit
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmazonLinuxAMIID
+      InstanceType: t2.micro
+      SecurityGroupIds:
+        - !Ref AppSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: App Server
+⚠️ Make sure this resource appears at the same indentation level as your other resources like MyVPC, MyS3Bucket, etc.
+________________________________________
+🧩 Sample Complete Template Snippet (Combined Example)
+Here’s how the relevant parts of your template may look now:
+yaml
+CopyEdit
+Parameters:
+  AmazonLinuxAMIID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic
+      VpcId: !Ref MyVPC
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmazonLinuxAMIID
+      InstanceType: t2.micro
+      SecurityGroupIds:
+        - !Ref AppSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: App Server
+Make sure that AppSecurityGroup and PublicSubnet are defined in your template before referencing them.
+________________________________________
+⬆️ Step 3: Update the Stack
+1.	Open AWS Console → CloudFormation
+2.	Select the Lab stack
+3.	Choose Update
+4.	Choose Replace current template
+5.	Upload your revised task1.yaml
+6.	Click Next → Next
+You should now see:
+cpp
+CopyEdit
+Preview Changes
++ Add AWS::EC2::Instance EC2Instance
+Click Update stack
+________________________________________
+✅ Step 4: Verify the Instance
+1.	Wait until the stack status becomes UPDATE_COMPLETE
+2.	Click the Resources tab
+3.	Confirm that EC2Instance appears
+________________________________________
+(Optional) 🧭 Step 5: Go to EC2 Console
+1.	Go to the EC2 service
+2.	Locate the instance named App Server
+3.	Confirm it was successfully launched by CloudFormation
+
+✅ Task 4: Delete the Stack
+You're almost done! This final task walks you through cleaning up your resources by deleting the CloudFormation stack.
+________________________________________
+🧾 Steps to Delete the Stack:
+1.	Open the AWS CloudFormation Console
+o	URL: https://console.aws.amazon.com/cloudformation
+2.	In the Stacks list, select the stack named Lab
+3.	Click the Delete button on the top right
+4.	In the confirmation dialog, choose Delete stack
+________________________________________
+🔄 What Happens Next?
+•	The status will change to: DELETE_IN_PROGRESS
+•	After a few minutes, the stack will disappear from the list
+•	All resources created by the stack (e.g., S3 bucket, EC2 instance, VPC, etc.) will be deleted automatically
+
+
+LAB 7:
+TASK 1
+🖥️ Part 1: Connect to the Command Host
+Windows Users:
+1.	Go to AWS Console > EC2 > Instances.
+2.	Find and select the Command Host instance.
+3.	Copy its IPv4 Public IP.
+4.	Download the labsuser.ppk key from the Details panel.
+5.	Install and open PuTTY:
+o	Go to Connection → Set keepalives = 30 seconds.
+o	Go to Session → Enter the IPv4 IP.
+o	Go to SSH > Auth → Browse and choose labsuser.ppk.
+6.	Click Open, and login as:
+sql
+CopyEdit
+ec2-user
+macOS/Linux Users:
+1.	Go to AWS Console > EC2 > Instances, get the IPv4 Public IP.
+2.	Download the labsuser.pem key from Details panel.
+3.	In your terminal:
+bash
+CopyEdit
+cd ~/Downloads              # Or where you saved labsuser.pem
+chmod 400 labsuser.pem
+ssh -i labsuser.pem ec2-user@<IPv4-Public-IP>
+________________________________________
+🔍 Part 2: Query EC2 Instances Based on Tags
+Step 1: Find Instances by Project Tag
+bash
+CopyEdit
+aws ec2 describe-instances --filter "Name=tag:Project,Values=ERPSystem"
+→ Outputs all instance metadata that has the tag Project=ERPSystem.
+________________________________________
+Step 2: Narrow Results to Show Only Instance IDs
+bash
+CopyEdit
+aws ec2 describe-instances \
+  --filter "Name=tag:Project,Values=ERPSystem" \
+  --query 'Reservations[*].Instances[*].InstanceId'
+________________________________________
+Step 3: Show ID and Availability Zone (AZ)
+bash
+CopyEdit
+aws ec2 describe-instances \
+  --filter "Name=tag:Project,Values=ERPSystem" \
+  --query 'Reservations[*].Instances[*].{ID:InstanceId, AZ:Placement.AvailabilityZone}'
+________________________________________
+Step 4: Add Custom Tag Values (Project tag)
+bash
+CopyEdit
+aws ec2 describe-instances \
+  --filter "Name=tag:Project,Values=ERPSystem" \
+  --query 'Reservations[*].Instances[*].{ID:InstanceId, AZ:Placement.AvailabilityZone, Project:Tags[?Key==`Project`] | [0].Value}'
+________________________________________
+Step 5: Add Environment and Version Tags
+bash
+CopyEdit
+aws ec2 describe-instances \
+  --filter "Name=tag:Project,Values=ERPSystem" \
+  --query 'Reservations[*].Instances[*].{ID:InstanceId, AZ:Placement.AvailabilityZone, Project:Tags[?Key==`Project`] | [0].Value, Environment:Tags[?Key==`Environment`] | [0].Value, Version:Tags[?Key==`Version`] | [0].Value}'
+________________________________________
+Step 6: Filter Only Development Instances
+bash
+CopyEdit
+aws ec2 describe-instances \
+  --filter "Name=tag:Project,Values=ERPSystem" "Name=tag:Environment,Values=development" \
+  --query 'Reservations[*].Instances[*].{ID:InstanceId, AZ:Placement.AvailabilityZone, Project:Tags[?Key==`Project`] | [0].Value, Environment:Tags[?Key==`Environment`] | [0].Value, Version:Tags[?Key==`Version`] | [0].Value}'
+→ You should see only 2 instances with:
+•	Project: ERPSystem
+•	Environment: development
+•	Version: 1.0
+________________________________________
+🔧 Part 3: Update the Version Tag
+We now want to update the Version tag of all instances that match:
+•	Project=ERPSystem
+•	Environment=development
+Step 1: Open the Shell Script
+On the Command Host, run:
+bash
+CopyEdit
+nano /home/ec2-user/change-resource-tags.sh
+Paste this script (if not already there):
+bash
+CopyEdit
+#!/bin/bash
+
+# Get list of instance IDs for development environment
+INSTANCE_IDS=$(aws ec2 describe-instances \
+  --filters "Name=tag:Project,Values=ERPSystem" "Name=tag:Environment,Values=development" \
+  --query "Reservations[*].Instances[*].InstanceId" \
+  --output text)
+
+# Update the Version tag to 2.0
+for ID in $INSTANCE_IDS
+do
+  echo "Updating instance $ID..."
+  aws ec2 create-tags \
+    --resources $ID \
+    --tags Key=Version,Value=2.0
+done
+
+echo "Tag update complete."
+Step 2: Save and Exit
+Press Ctrl+O, then Enter to save.
+Press Ctrl+X to exit.
+Step 3: Make Script Executable
+bash
+CopyEdit
+chmod +x /home/ec2-user/change-resource-tags.sh
+Step 4: Run the Script
+bash
+CopyEdit
+./change-resource-tags.sh
+________________________________________
+✅ Final Check
+To verify the new Version tag:
+bash
+CopyEdit
+aws ec2 describe-instances \
+  --filter "Name=tag:Project,Values=ERPSystem" "Name=tag:Environment,Values=development" \
+  --query 'Reservations[*].Instances[*].{ID:InstanceId, Version:Tags[?Key==`Version`] | [0].Value}'
+
+TASK 2
+🔧 Step 1: Connect to the Command Host
+Connect to your Command Host EC2 instance via SSH.
+If you’ve already connected during Task 1, skip this step.
+Otherwise:
+bash
+CopyEdit
+ssh -i labsuser.pem ec2-user@<COMMAND-HOST-PUBLIC-IP>
+________________________________________
+📂 Step 2: Navigate to the Script Directory
+Go into the directory where the script is stored:
+bash
+CopyEdit
+cd ~/aws-tools
+________________________________________
+📝 Step 3: Open and Examine the Script
+Open the stopinator.php file using nano:
+bash
+CopyEdit
+nano stopinator.php
+You'll see code that uses the AWS SDK for PHP to:
+•	Scan all AWS regions
+•	Search for EC2 instances with specific tag filters
+•	Stop or start those instances based on a command-line flag
+🔑 Key options supported by the script:
+Option	Description
+-t	Provide tag filters in the format Key=Value;Key=Value
+-s	If present, the script starts instances instead of stopping them
+Press Ctrl + X to exit the editor after reading.
+________________________________________
+🚦 Step 4: Stop ERPSystem Development Instances
+Run this command:
+bash
+CopyEdit
+./stopinator.php -t"Project=ERPSystem;Environment=development"
+✅ What this does:
+•	Searches all AWS regions
+•	Finds instances with both:
+o	Project=ERPSystem
+o	Environment=development
+•	Stops them if they are running
+🖥️ Example Output:
+css
+CopyEdit
+Region is us-east-1
+No instances to stop in region
+Region is us-west-2
+Found instance i-0952aa9f
+Found instance i-d32fb7d9
+Stopping all identified instances...
+________________________________________
+🧾 Step 5: Verify in AWS Console
+1.	Go to EC2 > Instances
+2.	Look for 2 instances with:
+o	Tags: Project=ERPSystem, Environment=development
+3.	Confirm their state is “stopping” or “stopped”
+________________________________________
+🔁 Step 6: Start ERPSystem Development Instances
+To start those same instances again, run:
+bash
+CopyEdit
+./stopinator.php -t"Project=ERPSystem;Environment=development" -s
+🔁 What happens:
+•	The -s flag tells the script to start instances instead of stopping
+•	It finds the same instances using the tag filters
+•	Starts them if they are in a stopped state
+________________________________________
+🧾 Step 7: Verify Again in Console
+1.	Go back to the EC2 Console
+2.	Confirm that the same 2 instances are now starting or running
+________________________________________
+✅ Summary of Commands
+bash
+CopyEdit
+cd ~/aws-tools                            # Go to tools directory
+nano stopinator.php                      # Open and examine the script
+./stopinator.php -t"Project=ERPSystem;Environment=development"    # Stop
+./stopinator.php -t"Project=ERPSystem;Environment=development" -s  # Start
+
+
+Task 3: Terminate Non-Compliant Instances and accompanying summary notes for each part of the process.
+________________________________________
+✅ Objective:
+Terminate EC2 instances in a private subnet that do not have an Environment tag (i.e., enforce a "tag-or-terminate" policy).
+________________________________________
+✅ Steps and Notes:
+🔹 Step 1: Open the Script
+bash
+CopyEdit
+cd ~/aws-tools
+nano terminate-instances.php
+🔸 Notes:
+•	Script takes two arguments:
+o	-region → AWS region (e.g., us-west-2)
+o	-subnetid → Subnet ID to look into
+•	Three major sections in script:
+1.	Get all instances with Environment tag → store their IDs in a hash table
+2.	Get all instances in given subnet → compare with hash table to find non-compliant ones
+3.	Terminate non-compliant instances → using terminateInstances() method
+________________________________________
+🔹 Step 2: Identify Subnet and Region
+On EC2 Console:
+1.	Go to EC2 Dashboard > Instances
+2.	Select one private instance
+3.	On Description tab, note:
+o	Availability Zone: us-west-2a → Region = us-west-2
+o	Subnet ID: subnet-0abc123def4567890 (example)
+________________________________________
+🔹 Step 3: Make Test Instances Non-Compliant
+1.	In the Tags tab, choose Manage tags
+2.	Remove the tag Environment
+3.	Click Save
+4.	Repeat for another instance in the same subnet
+________________________________________
+🔹 Step 4: Run the Termination Script
+bash
+CopyEdit
+./terminate-instances.php -region us-west-2 -subnetid subnet-0abc123def4567890
+Example Output:
+css
+CopyEdit
+Checking i-0234abcd5678efgh1
+Checking i-0abcd1234ef5678gh
+Terminating instances...
+Instances terminated.
+________________________________________
+🔹 Step 5: Verify in EC2 Console
+1.	Go to EC2 Dashboard
+2.	Filter by the Subnet ID
+3.	Confirm that the instances with no Environment tag are terminating or terminated
+________________________________________
+✅ Summary Notes
+Step	Description
+1	Script reads -region and -subnetid as input
+2	First block fetches all instances with Environment tag (any value)
+3	Second block fetches all instances in the specified subnet
+4	It compares instance IDs and finds instances missing the tag
+5	Non-compliant instance IDs are passed to terminateInstances()
+6	Instances without Environment tag in specified subnet are terminated
+________________________________________
+✅ Optional: AWS CLI Equivalent (if not using PHP)
+To list non-tagged instances via CLI:
+bash
+CopyEdit
+aws ec2 describe-instances \
+  --filters Name=subnet-id,Values=subnet-0abc123def4567890 \
+           Name=instance-state-name,Values=running \
+  --query 'Reservations[*].Instances[?!not_null(Tags[?Key==`Environment`].Value)][].InstanceId' \
+  --region us-west-2
+Then to terminate:
+bash
+CopyEdit
+aws ec2 terminate-instances --instance-ids <instance-id-1> <instance-id-2> --region us-west-2
+
+
+
